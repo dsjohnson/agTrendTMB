@@ -1,0 +1,24 @@
+Package: agTrendTMB
+Title: Interpolate Survey Counts For Site-Level Aggregating
+Version: 0.0.0.9000
+Authors@R: 
+    person(given = "Devin",
+           family = "Johnson",
+           role = c("aut", "cre"),
+           email = "devin.johnson@noaa.gov")
+Description: Uses time time trends and constrined Gaussian processes to interpolate abundance counts for aggregated analysis.
+License: CC0
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.1.1
+Imports: 
+    TMB (>= 1.7.18),
+    dplyr,
+    ggplot2,
+    mvnfast,
+    purrr,
+    truncnorm,
+    coda
+LinkingTo: 
+    TMB
