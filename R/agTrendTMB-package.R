@@ -8,3 +8,15 @@
 ## usethis namespace: start
 ## usethis namespace: end
 NULL
+
+
+.onAttach <- function(library, pkgname)
+{
+  info <-utils::packageDescription(pkgname)
+  package <- info$Package
+  version <- info$Version
+  date <- info$Date
+  packageStartupMessage(
+      paste(package, version, paste("(",date, ")", sep=""), "\n")
+  )
+}
