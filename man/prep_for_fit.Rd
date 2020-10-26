@@ -9,7 +9,7 @@ prep_for_fit(
   site.name = "SITE",
   abund.name = "counts",
   time.name = "year",
-  model.cuts = c(3, 10),
+  model.cuts = c(5, 10),
   non.zero = 2,
   total = 10
 )

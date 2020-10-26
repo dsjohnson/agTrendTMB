@@ -1,13 +1,13 @@
 #' @title Sample abundance from fitted agTrendTMB model
-#' @param fit_list A list object resulting from \code{fit_agTrend_ssl}
+#' @param x A list object resulting from \code{fit_agTrend_ssl}
 #' @param size Sample size. Defaults to 1000
 #' 
 #' @import mvnfast truncnorm
 #' @export
 #' 
-sample_N <- function(fit_list, size=1000){
-  if(is.null(fit_list)) return(NULL)
-  res <- fit_list$summary
+sample_N <- function(x, size=1000){
+  if(is.null(x)) return(NULL)
+  res <- x$summary
   S <- res$cov
   m <- res$value
   o1 <- rev(order(diag(S)))
@@ -23,10 +23,11 @@ sample_N <- function(fit_list, size=1000){
   sd_N_spl <- exp(rep(spl[,tmax+1],tmax) + rep(spl[,(tmax+2)],tmax)*mu_spl)
   N_spl <- truncnorm::rtruncnorm(length(mu_spl), mean=mu_spl, sd=sd_N_spl) %>% pmax(.,0) %>%
     round() %>% matrix(.,nrow=size)
-  d <- fit_list$raw_data
+  d <- x$raw_data
   tn <- attr(d, "time.name")
   attr(N_spl, "time.name") <- tn
   attr(N_spl, tn) <- d[[tn]]
   attr(N_spl, "abund.name") <- attr(d, "abund.name")
+  attr(N_spl, "survey_times") <- attr(d, "survey_times")
   return(N_spl)
 }

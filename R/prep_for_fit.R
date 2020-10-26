@@ -14,7 +14,7 @@
 #' @import dplyr purrr
 #' @export
 prep_for_fit <- function(x, site.name="SITE",abund.name="counts", 
-                         time.name="year", model.cuts=c(3,10), non.zero=2, total=10){
+                         time.name="year", model.cuts=c(5,10), non.zero=2, total=10){
   
   time_df <- data.frame(min(x[[time.name]]):max(x[[time.name]])) %>% `colnames<-`(time.name)
   

@@ -7,7 +7,7 @@
 get_growth(x, years)
 }
 \arguments{
-\item{x}{An anumdance sample from \cite{sample_N} or \cite{agg_abund}}
+\item{x}{An abundance sample from \cite{sample_N} or \cite{agg_abund}}
 
 \item{years}{A 2-vector that contains the first year and the last of the desired trend}
 }

@@ -1,12 +1,12 @@
 #' @title Add realized SSL survey values to the prediction sample
-#' @param fit_list A list object from \code{fit_agtrend_ssl}
+#' @param x A list object from \code{fit_agtrend_ssl}
 #' @param N_sample A matrix of abundance samples from \code{sample_N}
 #' @importFrom stats rnorm
 #' @export
 #' 
-get_real <- function(fit_list, N_sample){
-  d <- fit_list$raw_data
-  use_mi <- nrow(fit_list$q_output$value)>1
+get_real <- function(x, N_sample){
+  d <- x$raw_data
+  use_mi <- nrow(x$q_output$value)>1
   for(i in 1:ncol(N_sample)){
     if(is.na(d$y[i])){
       next

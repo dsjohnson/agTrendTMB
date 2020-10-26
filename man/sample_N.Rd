@@ -4,10 +4,10 @@
 \alias{sample_N}
 \title{Sample abundance from fitted agTrendTMB model}
 \usage{
-sample_N(fit_list, size = 1000)
+sample_N(x, size = 1000)
 }
 \arguments{
-\item{fit_list}{A list object resulting from \code{fit_agTrend_ssl}}
+\item{x}{A list object resulting from \code{fit_agTrend_ssl}}
 
 \item{size}{Sample size. Defaults to 1000}
 }

@@ -1,5 +1,5 @@
 library(tidyverse)
-library(agTrendTMB)
+# library(agTrendTMB)
 library(foreach)
 library(doFuture)
 registerDoFuture()
@@ -24,20 +24,31 @@ safe_agTrend_ssl <- fit_agTrend_ssl %>% safely()
 plan("multisession", workers=6)
 
 np[["fit"]] <- foreach(i=1:nrow(np))%dopar%{
-    output <- safe_agTrend_ssl(.x=np$data[[i]], model=np$model[[i]], 
-                                penalty=TRUE, obl.corr=TRUE)
-    if(!is.null(fit_list$result)){
-      output <- output$result
-    } else{
-      output <- output$error
-    }
-    output
+  .x <- np$data[[i]]
+  model <- np$model[[i]]
+  # if(model!="gp") return(NA)
+  ## Fix variance estimate if counts are all equal
+  if(var(.x$counts, na.rm=T)==0){
+    map.override <- list(xi=factor(c(NA,NA)))
+  } else{
+    map.override <- NULL
   }
+  ###
+  output <- safe_agTrend_ssl(.x, model, map.override=map.override, obl.corr=TRUE)
+  if(!is.null(output$result)){
+    output <- output$result
+  } else{
+    output <- output$error
+  }
+  return(output)
+}
 
 plan("sequential")
 
 ### Make site-level plots
-plot_list <- map2(np$fit, np$SITE, plot_fit, plot=FALSE)
+np <- np %>% mutate(
+  plots = map2(fit, SITE, plot_fit, plot=FALSE)
+)
 
 ## Create N samples
 np <- np %>% mutate(
@@ -57,14 +68,13 @@ N_region_df <- summary_agg(np_region) %>% filter(year>=1985)
 p1 <- ggplot(N_total_df) + geom_path(aes(y=Estimate, x=year)) +
   geom_ribbon(aes(x=year, ymax=CI_predict_upper, ymin=CI_predict_lower), alpha=0.2, fill="blue") +
   geom_pointrange(aes(x = year, y=Estimate_real, ymax=CI_real_lower, ymin=CI_real_upper),
-                  data=N_total_df %>% filter(year%in%survey_years)) +
+                  data=N_total_df) +
   ylab("Count") + xlab("Year") + theme_bw() 
-
 print(p1)
 
-N_region_df <- summary_agg(np_region)
 p2 <- ggplot(N_region_df) + geom_path(aes(y=Estimate, x=year)) +
   geom_ribbon(aes(x=year, ymax=CI_predict_upper, ymin=CI_predict_lower), alpha=0.2, fill="blue") +
   geom_pointrange(aes(x = year, y=Estimate_real, ymax=CI_real_lower, ymin=CI_real_upper),
-                  data=N_region_df %>% filter(year%in%survey_years)) +
-  facet_grid(rows="REGION") + theme_bw()
+                  data=N_region_df %>% filter(survey==1)) +
+  facet_wrap(~REGION, nrow=3, scales="free_y") + theme_bw()
+print(p2)

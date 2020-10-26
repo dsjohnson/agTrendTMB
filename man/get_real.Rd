@@ -4,10 +4,10 @@
 \alias{get_real}
 \title{Add realized SSL survey values to the prediction sample}
 \usage{
-get_real(fit_list, N_sample)
+get_real(x, N_sample)
 }
 \arguments{
-\item{fit_list}{A list object from \code{fit_agtrend_ssl}}
+\item{x}{A list object from \code{fit_agtrend_ssl}}
 
 \item{N_sample}{A matrix of abundance samples from \code{sample_N}}
 }

@@ -8,7 +8,7 @@ fit_agTrend_ssl(
   .x,
   model,
   obl.corr = FALSE,
-  penalty = TRUE,
+  penalty = FALSE,
   map.override = NULL,
   silent = TRUE,
   raw.return = FALSE
