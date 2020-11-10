@@ -15,7 +15,7 @@ sample_N <- function(x, size=1000){
   m <- m[o1]
   S <- S[o1,o1]
   eee <- eigen(S)
-  V <- eee$vectors%*%diag(sqrt(round(eee$values, 8)))
+  V <- eee$vectors%*%diag(sqrt(round(eee$values, 7)))
   spl <- mvnfast::rmvn(size, m, sigma=V, isChol=TRUE) 
   spl <- spl[,revo1]
   tmax <- length(m)-3

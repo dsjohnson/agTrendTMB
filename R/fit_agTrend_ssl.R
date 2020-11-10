@@ -8,7 +8,7 @@
 #' @param obl.corr Logical. Should correction be made for oblique photos.
 #' @param map.override List. method for overriding parameter parameters set to fixed values. This should rarely need to be used
 #' @param silent Logical. Run without messages
-#' @param raw.return Logical. Return raw fitting results. This is useful for diagnostic putposes when the models fails to fit
+#' @param debug Logical. Step into fitting function for interactive evaluation
 #' 
 #' @details There are 3 models which can be used for within site interpolation:
 #' * \code{const} This interpolates using a simple mean and variance for the site
@@ -31,8 +31,8 @@
 #' @export
 
 fit_agTrend_ssl <- function(
-  .x, model, obl.corr=FALSE, penalty=FALSE,map.override=NULL, 
-  silent=TRUE, raw.return=FALSE
+  .x, model, obl.corr=FALSE, map.override=NULL, 
+  silent=TRUE, debug=FALSE, force=FALSE
 ){
   # browser()
   abund.name <- attr(.x, "abund.name")
@@ -78,14 +78,16 @@ fit_agTrend_ssl <- function(
   if(model=="gp"){
     X <- model.matrix(~time, data=.x)
     P <- X%*%solve(crossprod(X))%*%t(X)
-    df <- min(10,floor((sum(!is.na(.x[[abund.name]]))-3)/2))
+    df <- min(10,floor((sum(!is.na(.x[[abund.name]]))-3)/3))
+    # df <- min(10,floor((sum(!is.na(.x[[abund.name]]))-3)))
     knots <- seq(t1, t2, length=df)
     h <- max(diff(knots))
     K <- outer(.x[[time.name]], knots, function(x,y){dnorm(x, y, h)})
     # df <- nrow(.x)-3
     # K <- iar_basis(nrow(.x), 2, df)
     K <- K-P%*%K
-    Kaug <- rbind(K, 1*diag(ncol(K)))
+    K <- K/exp(0.5*mean(log(diag(K%*%t(K)))))
+    Kaug <- rbind(K, 0.1*diag(ncol(K)))
   }
   
   ### TMB data
@@ -94,10 +96,10 @@ fit_agTrend_ssl <- function(
     y = .x$y,
     X = X,
     K = K,
-    lambda_tau = -log(1.0e-6)*3,
-    lambda_xi = 0.5,
-    lambda_beta_0 = max(.x$y, na.rm=TRUE),
-    penalty=as.integer(penalty)
+    lambda_tau = (log(max(.x$y, na.rm=T)/2)-log(1.0E-6))/qt(0.95, df=50),
+    df_tau = 50,
+    lambda_xi = c(log(max(.x$y, na.rm=T))/2, (log(max(.x$y, na.rm=T))/max(.x$y, na.rm=T))/2),
+    lambda_beta_0 = max(.x$y, na.rm=TRUE)
   )
   
  
@@ -125,8 +127,9 @@ fit_agTrend_ssl <- function(
   safe_optim <- safely(optim)
   safe_sdreport <- safely(TMB::sdreport)
   
+  if(debug) browser()
+  
   for(j in 1:length(qpts)){
-    # browser()
     ### TMB data
     tmb_data$y <- .x$y*(1-corr_idx) + qpts[j]*.x$y*(corr_idx)
     if(model=="const"){
@@ -148,7 +151,7 @@ fit_agTrend_ssl <- function(
       Xaug <- rbind(X,matrix(0,ncol(K),2))
       ff <- lm(yaug ~ 0 + Xaug + Kaug)
       ln_sigma <- 2+ log(summary(ff)$sigma)
-      ln_tau <- 1
+      ln_tau <- log(100)
       alpha <- rep(0,ncol(K))
       xi <- c(log(max(1/6, summary(ff)$sigma)), 0)
       alpha <- coef(ff)[-c(1:2)]
@@ -157,6 +160,8 @@ fit_agTrend_ssl <- function(
     }
     
     # if(j==13) browser()
+    
+    # xi = c(5.564916, 5.066555e-05)
     
     ### TMB parameters
     tmb_par <- list(
@@ -174,44 +179,44 @@ fit_agTrend_ssl <- function(
     
     opt[[j]] <- safe_optim(
       foo$par, foo$fn, foo$gr, method="BFGS",
-      control = list(maxit=1000, fnscale=1)
+      control = list(maxit=10000, fnscale=2)
     )
     
     # browser()
     
     fit[[j]] <- safe_sdreport(foo, getJointPrecision = TRUE)
     
-    # if(!fit[[j]]$result$pdHess & model=="gp"){
-    #   # browser()
-    #   # tmb_par <- map(tmb_par, ~{.x+rnorm(length(.x), 0, 0.1)})
-    #   ff <- lm(tmb_data$y ~ 0 + X)
-    #   tmb_par$alpha <- 0.0*tmb_par$alpha 
-    #   tmb_par$beta <- coef(ff)[1:2]
-    #   tmb_par$xi <- c(log(max(1/6, summary(ff)$sigma)), 0)
-    #   foo <- TMB::MakeADFun(
-    #     tmb_data, tmb_par, 
-    #     random=random,
-    #     map = tmb_map, DLL="agTrendTMB_TMBExports",
-    #     silent = silent)
-    #   opt[[j]] <- safe_optim(
-    #     foo$par, foo$fn, foo$gr, method="BFGS",
-    #     control = list(maxit=1000, fnscale=2)
-    #   )
-    #   fit[[j]] <- safe_sdreport(foo, getJointPrecision = TRUE)
-    # }
-  }  
+    if(!fit[[j]]$result$pdHess & model=="gp"){
+      # browser()
+      # tmb_par <- map(tmb_par, ~{.x+rnorm(length(.x), 0, 0.1)})
+      ff <- lm(tmb_data$y ~ 0 + X)
+      tmb_par$alpha <- 0.0*tmb_par$alpha
+      tmb_par$beta <- coef(ff)[1:2]
+      tmb_par$xi <- c(log(max(1/6, summary(ff)$sigma)), 0)
+      foo <- TMB::MakeADFun(
+        tmb_data, tmb_par,
+        random=random,
+        map = tmb_map, DLL="agTrendTMB_TMBExports",
+        silent = silent)
+      opt[[j]] <- safe_optim(
+        foo$par, foo$fn, foo$gr, method="BFGS",
+        control = list(maxit=1000, fnscale=2)
+      )
+      fit[[j]] <- safe_sdreport(foo, getJointPrecision = TRUE)
+    }
+  }
   
   # browser()
   
   opt_check <- map_lgl(map(opt, ~{.x$error}), is.null)
   fit_check <- map_lgl(map(fit, ~{.x$error}), is.null)
-  pdHess_check <- TRUE #map_lgl(fit, ~{.x$result$pdHess}) %>% ifelse(is.na(.), FALSE, .)
+  pdHess_check <- map_lgl(fit, ~{.x$result$pdHess}) %>% ifelse(is.na(.), FALSE, .)
   full_check <- opt_check*fit_check*pdHess_check
   ngood <- sum(full_check)
-  if(raw.return){
-    return(list(opt=opt, fit=fit, opt_check=opt_check, fit_check=fit_check, pdHess_check=pdHess_check, qpts=qpts, w=w))
-  }
-  if(ngood!=length(qpts)) stop("There were some bad fits! set 'raw.return=TRUE' and check results.")
+  # if(raw.return){
+  #   return(list(opt=opt, fit=fit, opt_check=opt_check, fit_check=fit_check, pdHess_check=pdHess_check, qpts=qpts, w=w))
+  # }
+  if(ngood!=length(qpts) & !force) stop("There were some bad fits! set 'debug=TRUE' and check fitting interactively.")
   
   # browser()
   

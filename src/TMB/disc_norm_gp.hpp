@@ -18,9 +18,9 @@ Type disc_norm_gp(objective_function<Type>* obj) {
   DATA_MATRIX(X); // measurement error design matrix
   DATA_MATRIX(K);
   DATA_SCALAR(lambda_tau);
-  DATA_SCALAR(lambda_xi);
+  DATA_VECTOR(lambda_xi);
   DATA_SCALAR(lambda_beta_0);
-  DATA_INTEGER(penalty);
+  DATA_SCALAR(df_tau);
   
   // Parameters
   PARAMETER_VECTOR(beta);
@@ -32,7 +32,7 @@ Type disc_norm_gp(objective_function<Type>* obj) {
   int Tmax = y.size();
   Type tau = exp(ln_tau);
   vector<Type> Xbeta = (X*beta).vec();
-  vector<Type> Kalpha = tau*(K*alpha).vec();
+  vector<Type> Kalpha = (K*alpha).vec();
   vector<Type> mu = Xbeta + Kalpha;
   
   vector<Type> f(7); f.setZero();// = 0.0;
@@ -47,18 +47,14 @@ Type disc_norm_gp(objective_function<Type>* obj) {
     }
   }
   for(int i=0; i<alpha.size(); i++){
-    if(penalty){
-      f(1) -= dnorm(alpha(i), Type(0), Type(1/sqrt(i+1)), true);  
-    } else{
-      f(1) -= dnorm(alpha(i), Type(0), Type(1), true);
-    }
-    
+    f(1) -= dnorm(alpha(i), Type(0), tau, true);
   }
+  Type ln_tau_z = (ln_tau+13.81551)/lambda_tau;
   // f(2) -= dexp(exp(ln_tau), lambda_tau, true);// + ln_tau;
-  // f(2) -= dnorm(ln_tau, Type(-13.81551), lambda_tau, true);
-  f(3) -= -xi(0);
-  f(4) -= dnorm(xi(1), Type(0), lambda_xi, true);
-  f(5) -= dnorm(beta[0], Type(0), lambda_beta_0, true);
+  f(2) -= dt(ln_tau_z, df_tau, true);
+  f(3) -= dnorm(xi(0), Type(0), lambda_xi(0), true);
+  f(4) -= dnorm(xi(1), Type(0), lambda_xi(1), true);
+  f(5) -= dnorm(beta(0), Type(0), lambda_beta_0, true);
   
   //Export results
   ADREPORT(mu);
